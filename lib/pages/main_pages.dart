@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:irrigation_app/pages/analytics.dart';
 import 'package:irrigation_app/pages/dashboard.dart';
 import 'package:irrigation_app/pages/settings.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -12,10 +13,17 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage>{
   int _currentIndex = 1;
   List<Widget> _pages = [];
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  String deviceID = '';
+
+  Future<void> _loadDeviceId() async {
+    deviceID = await _storage.read(key: 'deviceId') ?? '';
+  }
 
   @override
   initState(){
     super.initState();
+    _loadDeviceId();
 
     _pages = [
       const AnalyticsPage(),
@@ -58,6 +66,7 @@ class _MainPageState extends State<MainPage>{
             onTap: (index){
               setState(() {
                 _currentIndex = index;
+                _loadDeviceId();
               });
             },
             items: const [

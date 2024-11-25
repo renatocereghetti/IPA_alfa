@@ -8,17 +8,16 @@ class AboutPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Color(0xff121212),
       appBar: AppBar(
+        centerTitle: true,
         title: const Text('About the app'),
         foregroundColor: Colors.white,
         backgroundColor: Color(0xdd222222),
       ),
       body: Container(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width/30, vertical: MediaQuery.of(context).size.height/60),
-          child: const Text(
-            'v.1.0.0',
-            style: TextStyle(color: Colors.white, fontSize: 10),
-          ),
+        margin: EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+        child: const Text(
+          'v.1.0.0',
+          style: TextStyle(color: Colors.white, fontSize: 15),
         ),
       )
     );

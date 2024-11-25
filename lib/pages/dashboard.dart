@@ -7,6 +7,8 @@ import 'package:holding_gesture/holding_gesture.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:scroll_snap_list/scroll_snap_list.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
+import 'dart:math';
+
 
 
 class DashboardPage extends StatefulWidget {
@@ -16,11 +18,6 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  List<Color> modeColor = [
-    Color(0xffD32F2F),
-    Colors.blue,
-    Colors.yellow,
-  ];
   int _selectedTimeUnit = 3;
   List<String> timeUnits = [
     'seconds',
@@ -30,6 +27,7 @@ class _DashboardPageState extends State<DashboardPage> {
   ];
   bool switchValue = false;
   Offset modeBar = Offset(0,0);
+  Color modeColor = Color(0xffD32F2F);
   int _value = 0;
   int _threshold0 = 50;
   int _threshold1 = 50;
@@ -59,6 +57,7 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _loadDeviceId();
+    _loadIndexStyle();
     _setupMqttConnection();
   }
 
@@ -111,6 +110,15 @@ class _DashboardPageState extends State<DashboardPage> {
     deviceID = await _storage.read(key: 'deviceId') ?? '';
   }
 
+  Future<void> _saveIndexStyle(int indexStyle, int indexData) async {
+    await _storage.write(key: (indexData == 0)? 'gaugeStyle0':'gaugeStyle1', value: indexStyle.toString());
+  }
+
+  Future<void> _loadIndexStyle() async {
+    gaugeStyleIndex0 = int.parse(await _storage.read(key: 'gaugeStyle0') ?? '0');
+    gaugeStyleIndex1 = int.parse(await _storage.read(key: 'gaugeStyle1') ?? '0');
+  }
+
   void _showDialog(Widget child) {
     showCupertinoModalPopup<void>(
       context: context,
@@ -135,11 +143,17 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _navigateAndDisplaySelection(BuildContext context) async {
     // Navigator.push returns a Future that completes after calling
     // Navigator.pop on the Selection Screen.
+    List<double> randomDoubles = [];
+    for (int i = 0; i < 6; i++){
+      randomDoubles.add((Random().nextDouble()*100).floorToDouble());
+    }
     if (_currentIndexData) {
       gaugeStyleIndex1 = await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const GaugeStylePicker()),
+        MaterialPageRoute(builder: (context) => GaugeStylePicker(randVals: randomDoubles,)),
       ) ?? gaugeStyleIndex1;
+
+      _saveIndexStyle(gaugeStyleIndex1, 1);
 
       // When a BuildContext is used from a StatefulWidget, the mounted property
       // must be checked after an asynchronous gap.
@@ -154,8 +168,10 @@ class _DashboardPageState extends State<DashboardPage> {
     else{
       gaugeStyleIndex0 = await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const GaugeStylePicker()),
+        MaterialPageRoute(builder: (context) => GaugeStylePicker(randVals: randomDoubles,)),
       ) ?? gaugeStyleIndex0;
+
+      _saveIndexStyle(gaugeStyleIndex0, 0);
 
       // When a BuildContext is used from a StatefulWidget, the mounted property
       // must be checked after an asynchronous gap.
@@ -169,63 +185,77 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Widget _getGauge(int index, {bool isRadialGauge = true}) {
+  Widget _getGauge(int indexStyle, int indexData, {bool isRadialGauge = true}) {
     if (isRadialGauge) {
-      return _getRadialGauge(index);
+      _loadIndexStyle();
+      return _getRadialGauge(indexStyle, indexData);
     } else {
       return _getLinearGauge();
     }
   }
 
-  Widget _getRadialGauge(index) {
+  Widget _getRadialGauge(indexStyle, indexData) {
     return SfRadialGauge(
       title: GaugeTitle(
-          text: 'Plant ${_currentIndexData? 1:0}',
-          textStyle:
-          const TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white)),
+        text: (indexData == 0)? 'Plant 1':'Plant 2',
+        textStyle:
+        const TextStyle(fontSize: 10.0, fontWeight: FontWeight.bold, color: Colors.white)),
+      animationDuration: 3500,
+      enableLoadingAnimation: true,
       axes: <RadialAxis>[
         [
           RadialAxis(
-              annotations: <GaugeAnnotation>[
-                GaugeAnnotation(
-                    angle: 0, positionFactor: 0,
-                    widget: Text('${_currentIndexData? '${status1}%' : '${status0}%'}', style:
-                    TextStyle(fontWeight: FontWeight.bold, fontSize: MediaQuery.of(context).size.height/30, color: Colors.white),))
-              ],
-              interval: 10,
-              axisLineStyle: AxisLineStyle(
-                  gradient: SweepGradient(colors: <Color>[
-                    Colors.red,
-                    Colors.green,
-                  ], stops: <double>[
-                    0.25,
-                    0.75,
-                  ])),
-              pointers: <GaugePointer>[
-                /*NeedlePointer(
-                value: (_currentIndexData)? double.parse('${status1}.0') : double.parse('${status0}.0'),
-                knobStyle: KnobStyle(knobRadius: 0.1),
-                needleStartWidth: 5,
-                needleEndWidth: 7,
-                lengthUnit: GaugeSizeUnit.factor,
-                needleLength: 0.8,
-                needleColor: Colors.grey,
-              ),*/
-                MarkerPointer(
-                    value: (_currentIndexData)? double.parse('${status1}.0') : double.parse('${status0}.0'),
-                    markerHeight: 10, markerWidth: 10, elevation: 4
+            showLastLabel: true,
+            annotations: <GaugeAnnotation>[
+              GaugeAnnotation(
+                angle: 0, positionFactor: 0,
+                widget: Text(
+                  '${(indexData == 0)? status0:status1}%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: MediaQuery.of(context).size.height/30,
+                    color: Colors.white
+                  ),
                 )
-              ]
+              ),
+            ],
+            interval: 10,
+            axisLabelStyle: GaugeTextStyle(color: Colors.grey),
+            axisLineStyle: AxisLineStyle(
+                gradient: SweepGradient(colors: <Color>[
+                  Colors.red,
+                  Colors.green,
+                ], stops: <double>[
+                  0.25,
+                  0.75,
+                ])),
+            pointers: <GaugePointer>[
+              /*NeedlePointer(
+              value: (_currentIndexData)? double.parse('${status1}.0') : double.parse('${status0}.0'),
+              knobStyle: KnobStyle(knobRadius: 0.1),
+              needleStartWidth: 5,
+              needleEndWidth: 7,
+              lengthUnit: GaugeSizeUnit.factor,
+              needleLength: 0.8,
+              needleColor: Colors.grey,
+            ),*/
+              MarkerPointer(
+                  value: double.parse('${(indexData == 0)? status0:status1}.0'),
+                  markerHeight: 10, markerWidth: 10, elevation: 4
+              ),
+            ],
           ),
 
           RadialAxis(
+            showLastLabel: true,
             annotations: <GaugeAnnotation>[
               GaugeAnnotation(
                   angle: 90, positionFactor: 0.75,
-                  widget: Text('${_currentIndexData? '${status1}%' : '${status0}%'}', style:
-                  TextStyle(fontWeight: FontWeight.bold, fontSize: MediaQuery.of(context).size.height/40, color: Colors.white),))
+                  widget: Text('${(indexData == 0)? status0:status1}%', style:
+                  TextStyle(fontWeight: FontWeight.bold, fontSize: MediaQuery.of(context).size.height/30, color: Colors.white),)),
             ],
             interval: 10,
+            axisLabelStyle: GaugeTextStyle(color: Colors.grey),
             axisLineStyle: AxisLineStyle(
                 gradient: SweepGradient(colors: <Color>[
                   Colors.red,
@@ -236,10 +266,13 @@ class _DashboardPageState extends State<DashboardPage> {
                 ])),
             pointers: <GaugePointer>[
               NeedlePointer(
-                value: (_currentIndexData)? double.parse('${status1}.0') : double.parse('${status0}.0'),
+                value: double.parse('${(indexData == 0)? status0:status1}.0'),
                 knobStyle: KnobStyle(knobRadius: 0.1),
                 needleStartWidth: 5,
                 needleEndWidth: 7,
+                animationType: AnimationType.easeOutBack,
+                enableAnimation: true,
+                animationDuration: 1200,
                 lengthUnit: GaugeSizeUnit.factor,
                 needleLength: 0.8,
                 needleColor: Colors.grey,
@@ -251,18 +284,187 @@ class _DashboardPageState extends State<DashboardPage> {
             annotations: <GaugeAnnotation>[
               GaugeAnnotation(
                   angle: 0, positionFactor: 0,
-                  widget: Text('${_currentIndexData? '${status1}%' : '${status0}%'}', style:
-                  TextStyle(fontWeight: FontWeight.bold, fontSize: MediaQuery.of(context).size.height/30, color: Colors.white),))
+                  widget: Text('${(indexData == 0)? status0:status1}%', style:
+                  TextStyle(fontWeight: FontWeight.bold, fontSize: MediaQuery.of(context).size.height/30, color: Colors.white),)),
             ],
             interval: 10,
+            axisLabelStyle: GaugeTextStyle(color: Colors.grey),
             axisLineStyle: AxisLineStyle(
               color: Colors.purpleAccent,
             ),
+            pointers: <GaugePointer>[
+                RangePointer(value: double.parse('${(indexData == 0)? status0:status1}.0'), dashArray: <double>[3, 3], color: Colors.black),
+            ]
+          ),
+          RadialAxis(
+              minimum: 0,
+              maximum: 100,
+              minorTicksPerInterval: 9,
+              showLastLabel: true,
+              showAxisLine: false,
+              labelOffset: 8,
+              ranges: <GaugeRange>[
+                GaugeRange(
+                    startValue: 66,
+                    endValue: 100,
+                    startWidth: 0.265,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.265,
+                    color: const Color.fromRGBO(123, 199, 34, 0.75)),
+                GaugeRange(
+                    startValue: 33,
+                    endValue: 66,
+                    startWidth: 0.265,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.265,
+                    color: const Color.fromRGBO(238, 193, 34, 0.75)),
+                GaugeRange(
+                    startValue: 0,
+                    endValue: 33,
+                    startWidth: 0.265,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.265,
+                    color: const Color.fromRGBO(238, 79, 34, 0.65)),
+              ],
+              annotations: <GaugeAnnotation>[
+                GaugeAnnotation(
+                    angle: 90,
+                    positionFactor: 0.35,
+                    widget: Text(
+                        'Moisture',
+                        style:
+                        TextStyle(color: Color(0xFFF8B195), fontSize: 10))),
+                GaugeAnnotation(
+                  angle: 90,
+                  positionFactor: 0.75,
+                  widget: Text(
+                    '${(indexData == 0)? status0:status1}%',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+                  ),
+                ),
+              ],
               pointers: <GaugePointer>[
-                RangePointer(value: (_currentIndexData)? double.parse('${status1}.0') : double.parse('${status0}.0'), dashArray: <double>[8, 2])
+                NeedlePointer(
+                  value: double.parse('${(indexData == 0)? status0:status1}.0'),
+                  needleStartWidth: 0,
+                  needleEndWidth: 5,
+                  animationType: AnimationType.easeOutBack,
+                  enableAnimation: true,
+                  animationDuration: 1200,
+                  knobStyle: KnobStyle(
+                      knobRadius: 0.09,
+                      borderColor: const Color(0xFFF8B195),
+                      color: Color(0xdd222222),
+                      borderWidth: 0.035),
+                  tailStyle: TailStyle(
+                      color: const Color(0xFFF8B195),
+                      width: 4,
+                      length: 0.15),
+                  needleColor: const Color(0xFFF8B195),
+                )
+              ],
+              axisLabelStyle: GaugeTextStyle(fontSize: 12, color: Colors.grey),
+              majorTickStyle: const MajorTickStyle(
+                  length: 0.25, lengthUnit: GaugeSizeUnit.factor),
+              minorTickStyle: const MinorTickStyle(
+                  length: 0.13, lengthUnit: GaugeSizeUnit.factor, thickness: 1)),
+          RadialAxis(
+              startAngle: 180,
+              endAngle: 360,
+              interval: 10,
+              canScaleToFit: true,
+              showLastLabel: true,
+              radiusFactor: 1.2,
+              minorTickStyle: const MinorTickStyle(
+                  length: 0.05, lengthUnit: GaugeSizeUnit.factor),
+              majorTickStyle: const MajorTickStyle(
+                  length: 0.1, lengthUnit: GaugeSizeUnit.factor),
+              minorTicksPerInterval: 5,
+              pointers: <GaugePointer>[
+                NeedlePointer(
+                    value: double.parse((indexData == 0)? '$status0.0':'$status1.0'),
+                    needleEndWidth: 3,
+                    needleLength: 0.8,
+                    animationType: AnimationType.easeOutBack,
+                    enableAnimation: true,
+                    animationDuration: 1200,
+                    knobStyle: KnobStyle(
+                      knobRadius: 8,
+                      sizeUnit: GaugeSizeUnit.logicalPixel,
+                    ),
+                    tailStyle: TailStyle(
+                        width: 3,
+                        lengthUnit: GaugeSizeUnit.logicalPixel,
+                        length: 20))
+              ],
+              axisLabelStyle: const GaugeTextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+              axisLineStyle:
+              const AxisLineStyle(thickness: 3, color: Color(0xFF00A8B5))),
+          RadialAxis(
+              showAxisLine: false,
+              showLabels: false,
+              showTicks: false,
+              startAngle: 180,
+              endAngle: 360,
+              maximum: 100,
+              canScaleToFit: true,
+              radiusFactor: 1.2,
+              pointers: <GaugePointer>[
+                NeedlePointer(
+                    needleEndWidth: 5,
+                    needleLength: 0.7,
+                    animationType: AnimationType.easeOutBack,
+                    enableAnimation: true,
+                    animationDuration: 1200,
+                    value: double.parse((indexData == 0)? '$status0.0':'$status1.0'),
+                    knobStyle: KnobStyle(knobRadius: 0)),
+              ],
+              ranges: <GaugeRange>[
+                GaugeRange(
+                    startValue: 0,
+                    endValue: 16,
+                    startWidth: 0.45,
+                    endWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    color: const Color(0xFFDD3800)),
+                GaugeRange(
+                    startValue: 16.5,
+                    endValue: 33,
+                    startWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.45,
+                    color: const Color(0xFFFF4100)),
+                GaugeRange(
+                    startValue: 33.5,
+                    endValue: 50,
+                    startWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.45,
+                    color: const Color(0xFFFFBA00)),
+                GaugeRange(
+                    startValue: 50.5,
+                    endValue: 66,
+                    startWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.45,
+                    color: const Color(0xFFFFDF10)),
+                GaugeRange(
+                    startValue: 66.5,
+                    endValue: 82.5,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    startWidth: 0.45,
+                    endWidth: 0.45,
+                    color: const Color(0xFF8BE724)),
+                GaugeRange(
+                    startValue: 83,
+                    endValue: 100,
+                    startWidth: 0.45,
+                    endWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    color: const Color(0xFF64BE00)),
               ]
-          )
-        ][index],
+          ),
+        ][indexStyle],
       ],
     );
   }
@@ -305,6 +507,11 @@ class _DashboardPageState extends State<DashboardPage> {
         Offset(0,0),
         Offset(1,0).scale(1.23, 0),
         Offset(2,0).scale(1.165, 0)
+      ][newIndex];
+      modeColor = [
+        Color(0xffD32F2F),
+        Colors.blue,
+        Colors.yellow,
       ][newIndex];
     });
   }
@@ -362,9 +569,9 @@ class _DashboardPageState extends State<DashboardPage> {
               _navigateAndDisplaySelection(context);
             },
             child: SizedBox(
-              height: MediaQuery.of(context).size.height/5.75,
-              width: MediaQuery.of(context).size.height/5.75,
-              child: _getGauge(gaugeStyleIndex0),
+              height: MediaQuery.of(context).size.height/4.5,
+              width: MediaQuery.of(context).size.height/4.5,
+              child: _getGauge(gaugeStyleIndex0, 0),
             ),
           ),
           /*Text(
@@ -381,9 +588,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 _navigateAndDisplaySelection(context);
               },
               child: SizedBox(
-                height: MediaQuery.of(context).size.height/5.75,
-                width: MediaQuery.of(context).size.height/5.75,
-                child: _getGauge(gaugeStyleIndex1),
+                height: MediaQuery.of(context).size.height/4.5,
+                width: MediaQuery.of(context).size.height/4.5,
+                child: _getGauge(gaugeStyleIndex1, 1),
               ),
             )
             /*Text(
@@ -459,7 +666,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   onTimeout: () {},
                   onTimerInitiated: () => sendManualCommand(_currentIndexData, 'start'),
                   onCancel: () => sendManualCommand(_currentIndexData, 'stop'),
-                  holdTimeout: Duration(milliseconds: 200),
+                  holdTimeout: Duration(milliseconds: 100),
                   enableHapticFeedback: true,
                   child: ElevatedButton(
                     onPressed: (){},
@@ -828,10 +1035,12 @@ class _DashboardPageState extends State<DashboardPage> {
                         children: [
                           IconButton(
                             onPressed: () async {
+                              _loadDeviceId();
+                              _loadIndexStyle();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   duration: Duration(seconds: 5),
-                                  content: Text('This button does absolutely nothing for now... \nBeside this message ;-)'),
+                                  content: Text('Style and ID refreshed'),
                                 ),
                               );
                             },
@@ -884,18 +1093,17 @@ class _DashboardPageState extends State<DashboardPage> {
                 Stack(
                   alignment: Alignment(0,0),
                   children: [
-                    // White square Container positioned dynamically
                     Positioned(
                       left: MediaQuery.of(context).size.width/10,
                       child: AnimatedSlide(
                         offset: modeBar,
-                        duration: const Duration(milliseconds: 500),
+                        duration: const Duration(milliseconds: 100),
                         curve: Curves.easeInOut,
                         child: Container(
                           width: MediaQuery.of(context).size.width/4,
                           height: MediaQuery.of(context).size.height/28,
                           decoration: BoxDecoration(
-                            color: modeColor[_currentIndex],
+                            color: modeColor,
                             borderRadius: BorderRadius.circular(MediaQuery.of(context).size.width/20),
                           ),
                         ),
@@ -955,7 +1163,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   height: MediaQuery.of(context).size.height/80,
                 ),
                 Container(
-                  height: MediaQuery.of(context).size.height/4.5,
+                  height: MediaQuery.of(context).size.height/4,
                   child: Column( // this column is completely useless but `Expanded` ideally shouldn't ly in a `Container`
                     children: [
                       Expanded(
@@ -1236,7 +1444,9 @@ class _TimerPickerItem extends StatelessWidget {
 
 
 class GaugeStylePicker extends StatelessWidget {
-  const GaugeStylePicker({super.key});
+  const GaugeStylePicker({super.key, required this.randVals});
+
+  final List<double> randVals;
 
   Widget _getGauge(int index, {bool isRadialGauge = true}) {
     if (isRadialGauge) {
@@ -1248,20 +1458,22 @@ class GaugeStylePicker extends StatelessWidget {
 
   Widget _getRadialGauge(index) {
     return SfRadialGauge(
-      title: GaugeTitle(
+      /*title: GaugeTitle(
           text: 'Example',
           textStyle:
-          const TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white)),
+          const TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white)),*/
       axes: <RadialAxis>[
         [
           RadialAxis(
+              showLastLabel: true,
               annotations: <GaugeAnnotation>[
                 GaugeAnnotation(
                     angle: 0, positionFactor: 0,
-                    widget: Text('75%', style:
+                    widget: Text('${randVals[0].toInt()}%', style:
                     TextStyle(fontWeight: FontWeight.bold, fontSize: 30.0, color: Colors.white),))
               ],
               interval: 10,
+              axisLabelStyle: GaugeTextStyle(color: Colors.grey),
               axisLineStyle: AxisLineStyle(
                   gradient: SweepGradient(colors: <Color>[
                     Colors.red,
@@ -1281,20 +1493,22 @@ class GaugeStylePicker extends StatelessWidget {
                 needleColor: Colors.grey,
               ),*/
                 MarkerPointer(
-                    value: 0.75,
+                    value: randVals[0],
                     markerHeight: 10, markerWidth: 10, elevation: 4
                 )
               ]
           ),
 
           RadialAxis(
+            showLastLabel: true,
             annotations: <GaugeAnnotation>[
               GaugeAnnotation(
                   angle: 90, positionFactor: 0.75,
-                  widget: Text('75%', style:
+                  widget: Text('${randVals[1].toInt()}%', style:
                   TextStyle(fontWeight: FontWeight.bold, fontSize: 20.0, color: Colors.white),))
             ],
             interval: 10,
+            axisLabelStyle: GaugeTextStyle(color: Colors.grey),
             axisLineStyle: AxisLineStyle(
                 gradient: SweepGradient(colors: <Color>[
                   Colors.red,
@@ -1305,7 +1519,10 @@ class GaugeStylePicker extends StatelessWidget {
                 ])),
             pointers: <GaugePointer>[
               NeedlePointer(
-                value: 0.75,
+                value: randVals[1],
+                animationType: AnimationType.bounceOut,
+                enableAnimation: true,
+                animationDuration: 1200,
                 knobStyle: KnobStyle(knobRadius: 0.1),
                 needleStartWidth: 5,
                 needleEndWidth: 7,
@@ -1316,20 +1533,188 @@ class GaugeStylePicker extends StatelessWidget {
             ],
           ),
           RadialAxis(
+              showLastLabel: true,
               annotations: <GaugeAnnotation>[
                 GaugeAnnotation(
-                    angle: 90, positionFactor: 0.75,
-                    widget: Text('75%', style:
+                    angle: 0, positionFactor: 0,
+                    widget: Text('${randVals[2].toInt()}%', style:
                     TextStyle(fontWeight: FontWeight.bold, fontSize: 30.0, color: Colors.white),))
               ],
               interval: 10,
+              axisLabelStyle: GaugeTextStyle(color: Colors.grey),
               axisLineStyle: AxisLineStyle(
                 color: Colors.purpleAccent,
               ),
               pointers: <GaugePointer>[
-                RangePointer(value: 75, dashArray: <double>[8, 2])
+                RangePointer(value: randVals[2], dashArray: <double>[3, 3], color: Colors.black)
               ]
-          )
+          ),
+          RadialAxis(
+              minimum: 0,
+              maximum: 100,
+              minorTicksPerInterval: 9,
+              showLastLabel: true,
+              showAxisLine: false,
+              labelOffset: 8,
+              ranges: <GaugeRange>[
+                GaugeRange(
+                    startValue: 66,
+                    endValue: 100,
+                    startWidth: 0.265,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.265,
+                    color: const Color.fromRGBO(123, 199, 34, 0.75)),
+                GaugeRange(
+                    startValue: 33,
+                    endValue: 66,
+                    startWidth: 0.265,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.265,
+                    color: const Color.fromRGBO(238, 193, 34, 0.75)),
+                GaugeRange(
+                    startValue: 0,
+                    endValue: 33,
+                    startWidth: 0.265,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.265,
+                    color: const Color.fromRGBO(238, 79, 34, 0.65)),
+              ],
+              annotations: <GaugeAnnotation>[
+                GaugeAnnotation(
+                    angle: 90,
+                    positionFactor: 0.35,
+                    widget: Text('Moisture',
+                        style:
+                        TextStyle(color: Color(0xFFF8B195), fontSize: 10))),
+                GaugeAnnotation(
+                  angle: 90,
+                  positionFactor: 0.75,
+                  widget: Text(
+                    '${randVals[3].toInt()}%',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+                  ),
+                ),
+              ],
+              pointers: <GaugePointer>[
+                NeedlePointer(
+                  value: randVals[3],
+                  needleStartWidth: 0,
+                  needleEndWidth: 5,
+                  animationType: AnimationType.easeOutBack,
+                  enableAnimation: true,
+                  animationDuration: 1200,
+                  knobStyle: KnobStyle(
+                      knobRadius: 0.09,
+                      borderColor: const Color(0xFFF8B195),
+                      color: Color(0xdd222222),
+                      borderWidth: 0.035),
+                  tailStyle: TailStyle(
+                      color: const Color(0xFFF8B195),
+                      width: 4,
+                      length: 0.15),
+                  needleColor: const Color(0xFFF8B195),
+                )
+              ],
+              axisLabelStyle: GaugeTextStyle(fontSize: 12, color: Colors.grey),
+              majorTickStyle: const MajorTickStyle(
+                  length: 0.25, lengthUnit: GaugeSizeUnit.factor),
+              minorTickStyle: const MinorTickStyle(
+                  length: 0.13, lengthUnit: GaugeSizeUnit.factor, thickness: 1)),
+          RadialAxis(
+              startAngle: 180,
+              endAngle: 360,
+              interval: 10,
+              canScaleToFit: true,
+              showLastLabel: true,
+              minorTickStyle: const MinorTickStyle(
+                  length: 0.05, lengthUnit: GaugeSizeUnit.factor),
+              majorTickStyle: const MajorTickStyle(
+                  length: 0.1, lengthUnit: GaugeSizeUnit.factor),
+              minorTicksPerInterval: 5,
+              pointers: <GaugePointer>[
+                NeedlePointer(
+                    value: randVals[4],
+                    needleEndWidth: 3,
+                    needleLength: 0.8,
+                    animationType: AnimationType.slowMiddle,
+                    enableAnimation: true,
+                    animationDuration: 1200,
+                    knobStyle: KnobStyle(
+                      knobRadius: 8,
+                      sizeUnit: GaugeSizeUnit.logicalPixel,
+                    ),
+                    tailStyle: TailStyle(
+                        width: 3,
+                        lengthUnit: GaugeSizeUnit.logicalPixel,
+                        length: 20))
+              ],
+              axisLabelStyle: const GaugeTextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+              axisLineStyle:
+              const AxisLineStyle(thickness: 3, color: Color(0xFF00A8B5))),
+          RadialAxis(
+              showAxisLine: false,
+              showLabels: false,
+              showTicks: false,
+              startAngle: 180,
+              endAngle: 360,
+              maximum: 120,
+              canScaleToFit: true,
+              radiusFactor: 1,
+              pointers: <GaugePointer>[
+                NeedlePointer(
+                    needleEndWidth: 5,
+                    needleLength: 0.7,
+                    value: randVals[5],
+                    animationType: AnimationType.elasticOut,
+                    enableAnimation: true,
+                    animationDuration: 1200,
+                    knobStyle: KnobStyle(knobRadius: 0)),
+              ],
+              ranges: <GaugeRange>[
+                GaugeRange(
+                    startValue: 0,
+                    endValue: 20,
+                    startWidth: 0.45,
+                    endWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    color: const Color(0xFFDD3800)),
+                GaugeRange(
+                    startValue: 20.5,
+                    endValue: 40,
+                    startWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.45,
+                    color: const Color(0xFFFF4100)),
+                GaugeRange(
+                    startValue: 40.5,
+                    endValue: 60,
+                    startWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.45,
+                    color: const Color(0xFFFFBA00)),
+                GaugeRange(
+                    startValue: 60.5,
+                    endValue: 80,
+                    startWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    endWidth: 0.45,
+                    color: const Color(0xFFFFDF10)),
+                GaugeRange(
+                    startValue: 80.5,
+                    endValue: 100,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    startWidth: 0.45,
+                    endWidth: 0.45,
+                    color: const Color(0xFF8BE724)),
+                GaugeRange(
+                    startValue: 100.5,
+                    endValue: 120,
+                    startWidth: 0.45,
+                    endWidth: 0.45,
+                    sizeUnit: GaugeSizeUnit.factor,
+                    color: const Color(0xFF64BE00)),
+              ]
+          ),
         ][index],
       ],
     );
@@ -1361,41 +1746,64 @@ class GaugeStylePicker extends StatelessWidget {
         backgroundColor: Color(0xdd222222),
       ),
       body: Center(
-        child: GridView.count(
-          crossAxisCount: 2,
-          children: [
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context, 0);
-              },
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height/5.75,
-                width: MediaQuery.of(context).size.height/5.75,
-                child: _getGauge(0),
+        child: Container(
+          margin: EdgeInsets.symmetric(vertical: 50, horizontal: 20),
+          child: GridView.count(
+            mainAxisSpacing: MediaQuery.of(context).size.height/40,
+            crossAxisSpacing: MediaQuery.of(context).size.width/40,
+            crossAxisCount: 2,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context, 0);
+                },
+                child: SizedBox(
+                  child: _getGauge(0),
+                ),
               ),
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context, 1);
-              },
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height/5.75,
-                width: MediaQuery.of(context).size.height/5.75,
-                child: _getGauge(1),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context, 1);
+                },
+                child: SizedBox(
+                  child: _getGauge(1),
+                ),
               ),
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context, 2);
-              },
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height/5.75,
-                width: MediaQuery.of(context).size.height/5.75,
-                child: _getGauge(2),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context, 2);
+                },
+                child: SizedBox(
+                  child: _getGauge(2),
+                ),
               ),
-            ),
-          ],
-        )
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context, 3);
+                },
+                child: SizedBox(
+                  child: _getGauge(3),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context, 4);
+                },
+                child: SizedBox(
+                  child: _getGauge(4),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context, 5);
+                },
+                child: SizedBox(
+                  child: _getGauge(5),
+                ),
+              ),
+            ],
+          )
+        ),
       ),
     );
   }

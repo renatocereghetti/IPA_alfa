@@ -5,6 +5,13 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+project.logger.debug(keystoreProperties['keyAlias'])
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.example.irrigation_app"
     compileSdk = flutter.compileSdkVersion
@@ -30,12 +37,33 @@ android {
         versionName = flutter.versionName
     }
 
-    buildTypes {
+    signingConfigs {
         release {
-            minifyEnabled true // This enables code shrinking (proguard / R8)
-            shrinkResources true // This enables resource shrinking
+            keyAlias = keystoreProperties['keyAlias']
+            keyPassword = keystoreProperties['keyPassword']
+            storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword = keystoreProperties['storePassword']
         }
     }
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now,
+            // so `flutter run --release` works.
+            // signingConfig = signingConfigs.debug
+            signingConfig = signingConfigs.release
+        }
+    }
+}
+
+
+dependencies {
+    // Add the required dependencies here
+    //implementation 'com.google.apis:google-api-services-storage:v1-rev305-1.25.0'  // Google API client
+    implementation 'com.google.errorprone:error_prone_annotations:2.18.0'  // Error-prone annotations
+    implementation 'joda-time:joda-time:2.10.10'  // JodaTime
+    implementation 'com.google.crypto.tink:tink-android:1.8.0'  // Google Tink encryption library
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.20'  // Kotlin standard library (adjust version as necessary)
 }
 
 flutter {

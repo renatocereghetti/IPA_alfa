@@ -43,6 +43,7 @@ dependencies:
   toggle_switch: ^2.3.0
   scroll_snap_list: ^0.9.1
   syncfusion_flutter_gauges: ^27.2.3
+  googleapis: ^13.2.0
 
 
 dev_dependencies:

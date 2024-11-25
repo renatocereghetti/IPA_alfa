@@ -12,7 +12,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>{
     return const Scaffold(
       backgroundColor: Color(0xff121212),
       body: Center(
-        child: Text('Analytics', style: TextStyle(color: Colors.white),),
+        child: Text('Coming soon ...', style: TextStyle(color: Colors.white, fontSize: 20),),
       )
     );
   }

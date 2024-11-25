@@ -38,18 +38,22 @@ class _DeviceIdPageState extends State<DeviceIdPage> {
     return Scaffold(
       backgroundColor: Color(0xff121212),
       appBar: AppBar(
+        centerTitle: true,
         title: const Text('Device ID'),
         foregroundColor: Colors.white,
         backgroundColor: Color(0xdd222222),
       ),
-      body: Center(
-        child: ListTile(
-          title: const Text('Enter Device ID', style: TextStyle(color: Colors.white),),
-          subtitle: Column(
+      body: Container(
+        margin: EdgeInsets.symmetric(vertical: 50, horizontal: 10),
+        child: Column(
             children: [
+              const Text('Enter Device ID', style: TextStyle(color: Colors.white, fontSize: 20),),
               TextField(
                 controller: _deviceIdController,
-                decoration: const InputDecoration(hintText: 'Device ID'),
+                decoration: const InputDecoration(labelText: 'Device ID', labelStyle: TextStyle(color: Colors.grey)),
+              ),
+              SizedBox(
+                height: 15,
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -59,17 +63,16 @@ class _DeviceIdPageState extends State<DeviceIdPage> {
                     const SnackBar(content: Text('Device ID saved successfully')),
                   );
                 },
-                child: const Text('Save'),
+                child: const Text('Save', style: TextStyle(color: Colors.black),),
               ),
               const SizedBox(height: 20),
               Text(
                 'Current Device ID: $currentDeviceId',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ],
           ),
         ),
-      ),
     );
   }
 }

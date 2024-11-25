@@ -8,13 +8,14 @@ class ProfilePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Color(0xff121212),
       appBar: AppBar(
+        centerTitle: true,
         title: const Text('Profile'),
         foregroundColor: Colors.white,
         backgroundColor: Color(0xdd222222),
       ),
-      body: const Center(
-        child: Text('Profile Page Content'),
-      ),
+        body: Center(
+          child: Text('Coming soon ...', style: TextStyle(color: Colors.white, fontSize: 20),),
+        )
     );
   }
 }
